@@ -15,10 +15,13 @@ import {
 import HomeIcon from "@mui/icons-material/Home";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import HistoryIcon from "@mui/icons-material/History";
+import LogoutIcon from "@mui/icons-material/Logout";
 import { PageType } from "./const";
-import { UserProfile } from "../components";
+import { History, SendCoin, UserProfile } from "../components";
+import { useNavigate } from "react-router-dom";
 const drawerWidth = 240;
 export const HomePage = (props?: Props) => {
+  const navigate = useNavigate();
   const [page, setPage] = React.useState({
     pageType: PageType.ProfilePage,
   });
@@ -41,6 +44,22 @@ export const HomePage = (props?: Props) => {
     });
   };
 
+  const handleLogoutIconClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    navigate("/login-wallet");
+  };
+
+  const renderPage = ({ pageType }: { pageType: PageType }) => {
+    switch (pageType) {
+      case PageType.ProfilePage:
+        return <UserProfile />;
+      case PageType.SendCoinPage:
+        return <SendCoin />;
+      case PageType.HistoryPage:
+        return <History />;
+      default:
+        break;
+    }
+  };
   const drawer = (
     <div>
       <Toolbar />
@@ -70,14 +89,14 @@ export const HomePage = (props?: Props) => {
             <ListItemText primary="My Acoount" />
           </ListItemButton>
         </ListItem>
-        {/* {["My Account", "Send Coin", "History"].map((text, index) => (
-          <ListItem key={text} disablePadding>
-            <ListItemButton>
-              <ListItemIcon>{index % 2 === 0 ? <InboxIcon /> : <MailIcon />}</ListItemIcon>
-              <ListItemText primary={text} />
-            </ListItemButton>
-          </ListItem>
-        ))} */}
+        <ListItem key="logout" disablePadding>
+          <ListItemButton onClick={handleLogoutIconClick}>
+            <ListItemIcon>
+              <LogoutIcon />
+            </ListItemIcon>
+            <ListItemText primary="Log Out" />
+          </ListItemButton>
+        </ListItem>
       </List>
     </div>
   );
@@ -108,7 +127,7 @@ export const HomePage = (props?: Props) => {
         </Drawer>
       </Box>
       <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` } }}>
-        {page.pageType === PageType.ProfilePage ? <UserProfile /> : "asdasd"}
+        {renderPage(page)}
       </Box>
     </Box>
   );
