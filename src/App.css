@@ -1,5 +1,15 @@
 .App {
   text-align: center;
+  max-width: 100%;
+}
+
+input.form-control {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+.btn {
+  margin: 5px;
 }
 
 .App-logo {
