@@ -6,9 +6,14 @@ import passport from "passport";
 import path from "path";
 import { Server } from "socket.io";
 import { applyPassportStrategy, verifyUserForSocket } from "./middlewares";
-import { authRouter, groupRouter, presentationRouter, userRouter } from "./routers";
+import {
+  authRouter,
+  groupRouter,
+  presentationRouter,
+  userRouter,
+} from "./routers";
 import { onConnection } from "./socket";
-import { configSequelize ,configAssociation} from "./utils";
+import { configSequelize, configAssociation } from "./utils";
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
@@ -40,9 +45,17 @@ app.use("/auth", authRouter);
 
 app.use("/user", passport.authenticate("jwt", { session: false }), userRouter);
 
-app.use("/group", passport.authenticate("jwt", { session: false }), groupRouter);
+app.use(
+  "/group",
+  passport.authenticate("jwt", { session: false }),
+  groupRouter
+);
 
-app.use("/presentation", passport.authenticate("jwt", { session: false }), presentationRouter);
+app.use(
+  "/presentation",
+  passport.authenticate("jwt", { session: false }),
+  presentationRouter
+);
 
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/index.html");
