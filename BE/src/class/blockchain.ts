@@ -1,22 +1,39 @@
 import crypto from "crypto";
+import elliptic from "elliptic";
+const SHA256 = (message) =>
+  crypto.createHash("sha256").update(message).digest("hex");
+const EC = elliptic.ec;
+const ec = new EC("secp256k1");
 export class Transaction {
   public amount: number;
-  public senderPublicKey: string;
-  public receiverPublicKey: string;
-  constructor(
-    amount: number,
-    senderPublicKey: string,
-    receiverPublicKey: string
-  ) {
+  public from: string;
+  public to: string;
+  public signature: string;
+  constructor(amount: number, from: string, to: string) {
     this.amount = amount;
-    this.senderPublicKey = senderPublicKey;
-    this.receiverPublicKey = receiverPublicKey;
+    this.from = from;
+    this.to = to;
   }
-  toString() {
-    return JSON.stringify(this);
+  sign(keyPair: elliptic.ec.KeyPair) {
+    if (keyPair.getPublic("hex") === this.from) {
+      this.signature = keyPair
+        .sign(SHA256(this.from + this.to + this.amount.toString()), "base64")
+        .toDER("hex");
+    }
+  }
+
+  isValid(tx: Transaction, chain: BlockChain) {
+    return (
+      tx.from &&
+      tx.to &&
+      tx.amount &&
+      chain.getBalance(tx.from) >= tx.amount &&
+      ec
+        .keyFromPublic(tx.from, "hex")
+        .verify(SHA256(tx.from + tx.to), tx.signature)
+    );
   }
 }
-
 export class Block {
   public previousHash: string;
   public transaction: Transaction[];
@@ -24,7 +41,7 @@ export class Block {
   public hash: string;
   public nonce: number;
   constructor(
-    previousHash: string,
+    previousHash = "",
     transaction: Transaction[] = [],
     timestamp = Date.now()
   ) {
@@ -38,12 +55,10 @@ export class Block {
   getHash() {
     const data =
       JSON.stringify(this.transaction) +
-      this.timestamp +
+      this.timestamp.toString() +
       this.previousHash +
-      this.nonce;
-    const hash = crypto.createHash("SHA256");
-    hash.update(data).end();
-    const hex = hash.digest("hex");
+      this.nonce.toString();
+    const hex = SHA256(data);
     return hex;
   }
 
@@ -53,17 +68,25 @@ export class Block {
       this.hash = this.getHash();
     }
   }
+
+  isValidTransactions(chain: BlockChain) {
+    return this.transaction.every((t) => t.isValid(t, chain));
+  }
 }
 
 export class BlockChain {
   public chain: Block[];
   public difficulty: number;
   public blockTime: number;
+  public transactions: Transaction[];
+  public reward: number;
   // initializing our chain with no records
   constructor() {
     this.chain = [new Block("", [], Date.now())];
     this.difficulty = 1;
     this.blockTime = 30000;
+    this.transactions = [];
+    this.reward = 200;
   }
 
   getPreviousBlock() {
@@ -80,13 +103,49 @@ export class BlockChain {
       Date.now() - this.getPreviousBlock().timestamp < this.blockTime ? 1 : -1;
   }
 
+  addTransaction(transaction: Transaction) {
+    if (transaction.isValid(transaction, this)) {
+      this.transactions.push(transaction);
+    }
+  }
+
+  mineTransaction() {
+    this.addBlock(
+      new Block(
+        "",
+        [new Transaction(CREATE_REWARD_ADDRESS), ...this.transactions],
+        Date.now()
+      )
+    );
+    this.transactions = [];
+  }
+
+  getBalance(address: string) {
+    let balance = 0;
+
+    this.chain.forEach((block) => {
+      block.transaction.forEach((t) => {
+        if (t.from === address) {
+          balance -= t.amount;
+        }
+
+        if (t.to === address) {
+          balance += t.amount;
+        }
+      });
+    });
+
+    return balance;
+  }
+
   isValidBlock(blockChain = this) {
     for (let i = 1; i < blockChain.chain.length; i++) {
       const currBlock = blockChain.chain[i];
       const prevBlock = blockChain.chain[i - 1];
       if (
         currBlock.hash !== currBlock.getHash() ||
-        prevBlock.hash !== prevBlock.getHash()
+        prevBlock.hash !== prevBlock.getHash() ||
+        currBlock.isValidTransactions(blockChain)
       ) {
         return false;
       }
@@ -98,17 +157,11 @@ export class BlockChain {
 export class Wallet {
   public privateKey: string;
   public publicKey: string;
-  public balance: number;
   // initializing our chain with no records
   constructor() {
-    const keys = crypto.generateKeyPairSync("rsa", {
-      modulusLength: 2048,
-      publicKeyEncoding: { type: "spki", format: "pem" },
-      privateKeyEncoding: { type: "pkcs8", format: "pem" },
-    });
-    this.privateKey = keys.privateKey;
-    this.publicKey = keys.publicKey;
-    this.balance = 0;
+    const key = ec.genKeyPair();
+    this.privateKey = key.getPrivate("hex");
+    this.publicKey = key.getPublic("hex");
   }
 
   send(amount: number, receiverPublicKey: string) {
