@@ -71,6 +71,7 @@ export const SendCoin = () => {
         label="Enter coin quantity"
         value={valueCoin}
         required
+        type="number"
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">

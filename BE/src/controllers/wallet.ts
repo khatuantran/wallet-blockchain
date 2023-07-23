@@ -170,6 +170,10 @@ export const sendCoin = async (
       return next(new Error("Cannot send coin for yourself"));
     }
 
+    if (amount <= 0) {
+      return next(new Error("invalid coin"));
+    }
+    
     const wallet = await Wallet.findOne({ where: { userName: fromUser } });
     const desUser = await Wallet.findOne({ where: { userName: toUser } });
 
