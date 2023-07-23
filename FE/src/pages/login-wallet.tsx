@@ -1,59 +1,52 @@
 import * as React from "react";
-
 import { toast } from "react-toastify";
 import { Box, Button, Grid, TextField, Typography, Avatar, CssBaseline, Container, Link } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { useNavigate } from "react-router-dom";
 import userStore from "../stores/user";
-// TODO remove, this demo shouldn't need to reset the theme.
+import axios from "axios";
 
 export const LoginWallet = () => {
   const { setDataUser } = userStore();
   const navigate = useNavigate();
-  //   const { handleSubmit, control } = useForm();
-  //   const [openModal, setOpenModal] = React.useState(false);
   const [password, setPassword] = React.useState("");
+  const [userName, setUserName] = React.useState("");
   const [buttonDisabled, setBtn] = React.useState(false);
-  //   const [buttonDisabled, setButtonDisabled] = React.useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const handleSubmit = async (event: React.FormEvent<HTMLElement>) => {
     event.preventDefault();
-
     setBtn(true);
-    // setTimeout(() => {
-    //   console.log("bat len");
-    //   setBtn(false);
-    // }, 2000);
-
     const res = await toast.promise(
-      new Promise((resolve) => setTimeout(() => resolve({ name: "Nguyen van A" }), 1000)),
+      axios.post(
+        process.env.REACT_APP_API_URL + "/login-wallet",
+        {
+          userName,
+          password,
+        },
+        { validateStatus: () => true },
+      ),
       {
-        pending: "Đang đăng nhập...",
+        pending: "Log in...",
       },
     );
-    setDataUser(res);
-    console.log("aaaaaaaaaaaaaaaaaa", password);
-    navigate("/home");
-    // setEmail(data.email);
-    // setButtonDisabled(true);
 
-    // if (res?.data?.error?.code === "invalid_email" || res?.data?.error?.code === "invalid_password") {
-    //   toast.error("Email hoặc mật khẩu không đúng");
-    //   setButtonDisabled(false);
-    //   return;
-    // }
-    // if (res?.data?.error?.code === "user_inactive") {
-    //   toast.error("Tài khoản chưa được kích hoạt");
-    //   setOpenModal(true);
-    //   setButtonDisabled(false);
-    //   return;
-    // }
-    // if (res.status === 200) {
-    //   setDataUser(res?.data?.data);
-    //   toast.success("Đăng nhập thành công");
-    //   navigate("/");
-    // }
-    // setButtonDisabled(false);aa
+    if (!res) {
+      toast.error("Failed to fetch");
+      setBtn(false);
+      return;
+    }
+
+    if (res?.status !== 200) {
+      toast.error(res.data.error);
+      setBtn(false);
+      return;
+    }
+
+    if (res?.status === 200) {
+      setDataUser(res?.data);
+      toast.success("Đăng nhập thành công");
+      navigate("/home");
+    }
   };
   return (
     <Container component="main" maxWidth="xs">
@@ -77,11 +70,22 @@ export const LoginWallet = () => {
             margin="normal"
             required
             fullWidth
+            id="userName"
+            label="User Name"
+            name="UserName"
+            value={userName}
+            autoFocus
+            onChange={(e) => setUserName(e.target.value)}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
             id="password"
             label="Password"
             name="password"
+            type="password"
             value={password}
-            autoFocus
             onChange={(e) => setPassword(e.target.value)}
           />
           <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }} disabled={buttonDisabled}>

@@ -6,15 +6,15 @@ import userStore from "../stores/user";
 import { CreateWallet, LoginWallet } from "../pages";
 
 export default function WebRoute() {
-  const { token } = userStore();
-  console.log(token);
+  const { user } = userStore();
+  console.log("aaaaaaaaaaaaaaaaa", user);
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/create-wallet" element={token ? <Navigate to="/" /> : <CreateWallet />} />
-        <Route path="/login-wallet" element={token ? <Navigate to="/" /> : <LoginWallet />} />
-        <Route path="/*" element={token === undefined ? <RegularRoute /> : <Navigate to="/login-wallet" />} />
-        <Route path="/home" element={token === undefined ? <RegularRoute /> : <Navigate to="/login-wallet" />} />
+        <Route path="/create-wallet" element={user ? <Navigate to="/" /> : <CreateWallet />} />
+        <Route path="/login-wallet" element={user ? <Navigate to="/" /> : <LoginWallet />} />
+        <Route path="/*" element={user ? <RegularRoute /> : <Navigate to="/login-wallet" />} />
+        <Route path="/home" element={user ? <RegularRoute /> : <Navigate to="/login-wallet" />} />
 
         {/* <Route path="/presentations/vote/:idP/:idS" element={<Vote />} /> */}
       </Routes>

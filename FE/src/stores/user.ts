@@ -1,22 +1,15 @@
-import axios from "axios";
 import create from "zustand";
 import { devtools, persist } from "zustand/middleware";
 
-const BASE_API = process.env.REACT_APP_BASE_HOST;
-
 let store = (set, get) => ({
-  user: {
-    fullName: "",
-    email: "",
-    id: "",
-  },
-  token: null,
+  user: null,
+
   getUser: () => get().user,
   setDataUser: (data) => {
+    console.log("data", data)
     set((state) => ({
       ...state,
       user: data,
-      token: data.accessToken,
     }));
   },
   setDataUserInfor: (data) => {
@@ -25,26 +18,11 @@ let store = (set, get) => ({
       user: data,
     }));
   },
-  refreshDataUserInfor: async () => {
-    const config = {
-      method: "get",
-      url: `${BASE_API}/user/profile`,
-      headers: {
-        Authorization: `Bearer ${get().token}`,
-      },
-    };
-    await axios(config).then((response) => {
-      set((state) => ({
-        ...state,
-        user: response?.data?.data,
-      }));
-    });
-  },
+
   logout: async () => {
     set((state) => ({
       ...state,
       user: null,
-      token: null,
     }));
   },
 });

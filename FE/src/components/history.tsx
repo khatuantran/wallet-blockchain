@@ -5,56 +5,60 @@ import ListItemText from "@mui/material/ListItemText";
 import ListItemAvatar from "@mui/material/ListItemAvatar";
 import Avatar from "@mui/material/Avatar";
 import ImageIcon from "@mui/icons-material/Image";
-import WorkIcon from "@mui/icons-material/Work";
-import BeachAccessIcon from "@mui/icons-material/BeachAccess";
-import { useNavigate } from "react-router-dom";
+import userStore from "../stores/user";
+import moment from "moment-timezone";
+import axios from "axios";
+interface ITransaction {
+  timestamp: number;
+  amount: number;
+  userName: string;
+  isSend: boolean;
+}
 
 export const History = () => {
-  const [profile, setProfile] = useState({
-    id: "",
-    balance: 0,
-  });
-  const [countBlock, setCountBlock] = useState(null);
+  const { getUser } = userStore();
+  const [list, setList] = useState([]);
 
-  const navigate = useNavigate();
-  useEffect(() => {
-    setProfile({
-      id: "RANDOM_ID",
-      balance: 100000,
+  const getHistory = async () => {
+    const user = getUser();
+    const res = await axios.get(`${process.env.REACT_APP_API_URL}/transaction?userName=${user.userName}`, {
+      validateStatus: () => true,
     });
-    // setFullName({ name: "TrungHC", familyName: "HCT" });
-  }, []);
 
-  const handleOnClick = () => {
-    navigate("/send-coin");
+    console.log(res);
+    if (res?.status === 200) {
+      setList(res.data.transaction);
+    }
   };
 
-  return (
-    <List sx={{ width: "100%", maxWidth: 360, bgcolor: "background.paper" }}>
-      <ListItem>
-        <ListItemAvatar>
-          <Avatar>
-            <ImageIcon />
-          </Avatar>
-        </ListItemAvatar>
-        <ListItemText primary="Photos" secondary="Jan 9, 2014" />
-      </ListItem>
-      <ListItem>
-        <ListItemAvatar>
-          <Avatar>
-            <WorkIcon />
-          </Avatar>
-        </ListItemAvatar>
-        <ListItemText primary="Work" secondary="Jan 7, 2014" />
-      </ListItem>
-      <ListItem>
-        <ListItemAvatar>
-          <Avatar>
-            <BeachAccessIcon />
-          </Avatar>
-        </ListItemAvatar>
-        <ListItemText primary="Vacation" secondary="July 20, 2014" />
-      </ListItem>
-    </List>
-  );
+  useEffect(() => {
+    getHistory();
+  }, []);
+
+  const renderListItem = (list: ITransaction[]) => {
+    if (!list || list.length === 0) {
+      return;
+    }
+
+    return list.map((c) => {
+      const time = moment(c.timestamp).tz("Asia/Ho_Chi_Minh").format("hh:mm DD/MM/YYYY");
+      const to = c.isSend
+        ? `Send to ${c.userName} with ${c.amount} coins`
+        : c.userName === ""
+        ? `You receive ${c.amount} coins`
+        : `Receive from ${c.userName} with ${c.amount} coins`;
+
+      return (
+        <ListItem key={time}>
+          <ListItemAvatar>
+            <Avatar>
+              <ImageIcon />
+            </Avatar>
+          </ListItemAvatar>
+          <ListItemText primary={to} secondary={time} />
+        </ListItem>
+      );
+    });
+  };
+  return <List sx={{ width: "100%", maxWidth: 360, bgcolor: "background.paper" }}>{renderListItem(list)}</List>;
 };

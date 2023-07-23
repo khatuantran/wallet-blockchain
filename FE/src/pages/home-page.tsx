@@ -19,9 +19,12 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import { PageType } from "./const";
 import { History, SendCoin, UserProfile } from "../components";
 import { useNavigate } from "react-router-dom";
+import userStore from "../stores/user";
 const drawerWidth = 240;
 export const HomePage = (props?: Props) => {
   const navigate = useNavigate();
+  const { logout } = userStore();
+
   const [page, setPage] = React.useState({
     pageType: PageType.ProfilePage,
   });
@@ -45,13 +48,14 @@ export const HomePage = (props?: Props) => {
   };
 
   const handleLogoutIconClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    logout();
     navigate("/login-wallet");
   };
 
   const renderPage = ({ pageType }: { pageType: PageType }) => {
     switch (pageType) {
       case PageType.ProfilePage:
-        return <UserProfile />;
+        return <UserProfile sendCoinClick={handleSendCoinIconClick} />;
       case PageType.SendCoinPage:
         return <SendCoin />;
       case PageType.HistoryPage:
@@ -60,6 +64,7 @@ export const HomePage = (props?: Props) => {
         break;
     }
   };
+
   const drawer = (
     <div>
       <Toolbar />

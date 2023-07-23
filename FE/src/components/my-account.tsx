@@ -6,42 +6,49 @@ import CardActions from "@mui/material/CardActions";
 import CardContent from "@mui/material/CardContent";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
-import { useNavigate } from "react-router-dom";
+import userStore from "../stores/user";
+import axios from "axios";
 
-export const UserProfile = () => {
+export const UserProfile = ({ sendCoinClick }) => {
+  const { getUser } = userStore();
   const [profile, setProfile] = useState({
-    id: "",
+    privateKey: "",
     balance: 0,
+    block: 0,
   });
-  const [countBlock, setCountBlock] = useState(null);
 
-  const navigate = useNavigate();
-  useEffect(() => {
-    setProfile({
-      id: "RANDOM_ID",
-      balance: 100000,
+  const getProfile = async () => {
+    const user = getUser();
+    const res = await axios.get(`${process.env.REACT_APP_API_URL}/wallet-balance?userName=${user.userName}`, {
+      validateStatus: () => true,
     });
-    // setFullName({ name: "TrungHC", familyName: "HCT" });
-  }, []);
-
-  const handleOnClick = () => {
-    navigate("/send-coin");
+    if (res?.status === 200) {
+      setProfile({
+        privateKey: res.data.privateKey,
+        balance: res.data.balance,
+        block: res.data.block,
+      });
+    }
   };
+
+  useEffect(() => {
+    getProfile();
+  }, []);
 
   return (
     <Box sx={{ minWidth: 275 }}>
       <Card variant="outlined">
         <CardContent>
           <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
-            ID: {profile.id}
+            ID: {profile.privateKey}
           </Typography>
           <Typography variant="h5" component="div">
             Your Balance: {profile.balance}
           </Typography>
-          <Typography variant="body2">Block: {countBlock}</Typography>
+          <Typography variant="body2">Block: {profile.block}</Typography>
         </CardContent>
         <CardActions>
-          <Button size="small" onClick={handleOnClick}>
+          <Button size="small" onClick={() => sendCoinClick()}>
             Send coin for another
           </Button>
         </CardActions>
