@@ -39,7 +39,7 @@ export const SendCoin = () => {
     }
 
     if (res?.status === 400) {
-      toast.error(res.data.error?.message);
+      toast.error(res.data.error);
       setBtn(false);
       return;
     }
