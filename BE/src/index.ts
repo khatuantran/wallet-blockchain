@@ -1,65 +1,36 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, { Express, NextFunction, Request, Response } from "express";
-import http from "http";
-import passport from "passport";
 import path from "path";
-import { Server } from "socket.io";
-import { applyPassportStrategy, verifyUserForSocket } from "./middlewares";
-import {
-  authRouter,
-  groupRouter,
-  presentationRouter,
-  userRouter,
-} from "./routers";
-import { onConnection } from "./socket";
 import { configSequelize, configAssociation } from "./utils";
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace Express {
-    interface User {
-      id: string;
-      fullName: string;
-      email: string;
-      password: string;
-      tokenCounter: number;
-      provider: string;
-    }
-  }
-}
+import {
+  createWallet,
+  getAllTransaction,
+  getWallet,
+  getWalletBalance,
+  sendCoin,
+} from "./controllers";
+import { Chain, Wallet } from "./models";
+import elliptic from "elliptic";
+import { BlockChain } from "./class";
+import "dotenv/config";
+const EC = elliptic.ec;
+const ec = new EC("secp256k1");
+
 const app: Express = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-  },
-});
+
 app.use(cors());
-applyPassportStrategy(passport);
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, "public")));
 
-app.use("/auth", authRouter);
+app.post("/login-wallet", getWallet);
+app.post("/create-wallet", createWallet);
+app.get("/wallet-balance", getWalletBalance);
+app.post("/send-coin", sendCoin);
+app.get("/transaction", getAllTransaction);
 
-app.use("/user", passport.authenticate("jwt", { session: false }), userRouter);
-
-app.use(
-  "/group",
-  passport.authenticate("jwt", { session: false }),
-  groupRouter
-);
-
-app.use(
-  "/presentation",
-  passport.authenticate("jwt", { session: false }),
-  presentationRouter
-);
-
-app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/index.html");
-});
 app.use((req, res) => {
   return res.status(404).json({
     error: {
@@ -71,20 +42,36 @@ app.use((req, res) => {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  res.status(500).json({ error: err.message });
+  res.status(400).json({ error: err.message });
 });
 
-io.use(verifyUserForSocket);
 const connectDBAndStartServer = async () => {
   const port = process.env.PORT || 3000;
   try {
     const sequelize = configSequelize();
     configAssociation();
     await sequelize.authenticate();
-    server.listen(port, () => {
+
+    let chain = await Chain.findOne();
+    if (!chain) {
+      const blockChain = new BlockChain();
+      await Wallet.findOrCreate({
+        where: { userName: process.env.WALLET_USER },
+        defaults: {
+          userName: process.env.WALLET_USER,
+          privateKey: process.env.WALLET_PRIVATE_KEY,
+          password: process.env.WALLET_PASSWORD,
+        },
+      });
+
+      await Chain.create({
+        blockchain: blockChain,
+      });
+    }
+
+    app.listen(port, () => {
       console.log(`Listening on port ${port}`);
     });
-    io.on("connection", (socket) => onConnection(io, socket));
   } catch (err) {
     console.log(err);
   }

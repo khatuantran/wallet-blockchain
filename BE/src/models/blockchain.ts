@@ -7,20 +7,14 @@ import {
 } from "sequelize-typescript";
 
 @Table({
-  tableName: "wallet",
+  tableName: "chain",
   timestamps: false,
 })
-export class Wallet extends Model<Wallet> {
+export class Chain extends Model<Chain> {
   @PrimaryKey
   @Column({ type: DataType.UUID, defaultValue: DataType.UUIDV4 })
   declare id: string;
 
-  @Column
-  declare privateKey: string;
-
-  @Column
-  declare userName: string;
-
-  @Column
-  declare password: string;
+  @Column(DataType.JSONB)
+  declare blockchain: object;
 }

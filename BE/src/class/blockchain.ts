@@ -1,37 +1,58 @@
 import crypto from "crypto";
 import elliptic from "elliptic";
-const SHA256 = (message) =>
-  crypto.createHash("sha256").update(message).digest("hex");
+import "dotenv/config";
 const EC = elliptic.ec;
 const ec = new EC("secp256k1");
+
+const SHA256 = (message: string) =>
+  crypto.createHash("sha256").update(message).digest("hex");
+
 export class Transaction {
   public amount: number;
   public from: string;
   public to: string;
+  public timestamp: number;
   public signature: string;
-  constructor(amount: number, from: string, to: string) {
+
+  constructor(amount: number, from: string, to: string, timestamp: number) {
     this.amount = amount;
     this.from = from;
     this.to = to;
-  }
-  sign(keyPair: elliptic.ec.KeyPair) {
-    if (keyPair.getPublic("hex") === this.from) {
-      this.signature = keyPair
-        .sign(SHA256(this.from + this.to + this.amount.toString()), "base64")
-        .toDER("hex");
-    }
+    this.timestamp = timestamp;
   }
 
-  isValid(tx: Transaction, chain: BlockChain) {
-    return (
-      tx.from &&
-      tx.to &&
-      tx.amount &&
-      chain.getBalance(tx.from) >= tx.amount &&
-      ec
-        .keyFromPublic(tx.from, "hex")
-        .verify(SHA256(tx.from + tx.to), tx.signature)
-    );
+  sign(keyPair: elliptic.ec.KeyPair) {
+    if (keyPair.getPublic("hex") !== this.from) {
+      throw new Error("You cannot sign transactions for other wallets!");
+    }
+
+    // Calculate the hash of this transaction, sign it with the key
+    // and store it inside the transaction object
+    const hashTx = this.calculateHash();
+    const sig = keyPair.sign(hashTx, "base64");
+
+    this.signature = sig.toDER("hex");
+  }
+
+  calculateHash() {
+    return crypto
+      .createHash("sha256")
+      .update(this.from + this.to + this.amount + this.timestamp)
+      .digest("hex");
+  }
+
+  isValid() {
+    // Reward transaction
+    if (this.from === "") {
+      return true;
+    }
+
+    if (!this.signature || this.signature.length === 0) {
+      throw new Error("No signature in this transaction");
+    }
+
+    const publicKey = ec.keyFromPublic(this.from, "hex");
+    return publicKey.verify(this.calculateHash(), this.signature);
   }
 }
 export class Block {
@@ -57,7 +78,7 @@ export class Block {
       JSON.stringify(this.transaction) +
       this.timestamp.toString() +
       this.previousHash +
-      this.nonce.toString();
+      this.nonce;
     const hex = SHA256(data);
     return hex;
   }
@@ -67,10 +88,17 @@ export class Block {
       this.nonce++;
       this.hash = this.getHash();
     }
+    console.log("Block mined: ", this.hash);
   }
 
-  isValidTransactions(chain: BlockChain) {
-    return this.transaction.every((t) => t.isValid(t, chain));
+  isValidTransactions() {
+    for (const tx of this.transaction) {
+      if (!tx.isValid()) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }
 
@@ -78,20 +106,51 @@ export class BlockChain {
   public chain: Block[];
   public difficulty: number;
   public blockTime: number;
-  public transactions: Transaction[];
+  public pendingTransactions: Transaction[];
   public reward: number;
   // initializing our chain with no records
-  constructor() {
-    this.chain = [new Block("", [], Date.now())];
-    this.difficulty = 1;
-    this.blockTime = 30000;
-    this.transactions = [];
-    this.reward = 200;
-  }
 
+  constructor(chain?: BlockChain) {
+    this.chain = chain?.chain || [
+      new Block(
+        "",
+        [
+          new Transaction(
+            100000,
+            "",
+            getPublicKey(process.env.WALLET_PRIVATE_KEY),
+            Date.now()
+          ),
+        ],
+        Date.now()
+      ),
+    ];
+    this.difficulty = chain?.difficulty || 1;
+    this.blockTime = chain?.blockTime || 30000;
+    this.pendingTransactions = chain?.pendingTransactions || [];
+    this.reward = chain?.reward || 200;
+  }
   getPreviousBlock() {
     // sending the entire block itself
     return this.chain[this.chain.length - 1];
+  }
+
+  minePendingTransaction(rewardAddress: string) {
+    const rewardTx = new Transaction(
+      this.reward,
+      "",
+      rewardAddress,
+      Date.now()
+    );
+    this.pendingTransactions.push(rewardTx);
+
+    const block = new Block("", this.pendingTransactions, Date.now());
+    block.mine(this.difficulty);
+
+    console.log("Block successfully mined!");
+    this.chain.push(block);
+
+    this.pendingTransactions = [];
   }
 
   addBlock(block: Block) {
@@ -104,20 +163,48 @@ export class BlockChain {
   }
 
   addTransaction(transaction: Transaction) {
-    if (transaction.isValid(transaction, this)) {
-      this.transactions.push(transaction);
+    if (transaction.from === null || !transaction.to) {
+      throw new Error("Transaction must include from and to address");
     }
-  }
 
-  mineTransaction() {
-    this.addBlock(
-      new Block(
-        "",
-        [new Transaction(CREATE_REWARD_ADDRESS), ...this.transactions],
-        Date.now()
-      )
+    // Verify the transactiion
+    if (!transaction.isValid()) {
+      throw new Error("Cannot add invalid transaction to chain");
+    }
+
+    if (transaction.amount <= 0) {
+      throw new Error("Transaction amount should be higher than 0");
+    }
+
+    // Making sure that the amount sent is not greater than existing balance
+    const walletBalance = this.getBalance(transaction.from);
+    if (walletBalance < transaction.amount) {
+      throw new Error("Not enough balance");
+    }
+
+    // Get all other pending transactions for the "from" wallet
+    const pendingTxForWallet = this.pendingTransactions.filter(
+      (tx) => tx.from === transaction.from
     );
-    this.transactions = [];
+
+    // If the wallet has more pending transactions, calculate the total amount
+    // of spend coins so far. If this exceeds the balance, we refuse to add this
+    // transaction.
+    if (pendingTxForWallet.length > 0) {
+      const totalPendingAmount = pendingTxForWallet
+        .map((tx) => tx.amount)
+        .reduce((prev, curr) => prev + curr);
+
+      const totalAmount = totalPendingAmount + transaction.amount;
+      if (totalAmount > walletBalance) {
+        throw new Error(
+          "Pending transactions for this wallet is higher than its balance."
+        );
+      }
+    }
+
+    this.pendingTransactions.push(transaction);
+    console.log("transaction added: %s", transaction);
   }
 
   getBalance(address: string) {
@@ -137,16 +224,35 @@ export class BlockChain {
 
     return balance;
   }
+  getAllTransactionsForWallet(address: string) {
+    const txs = [];
 
-  isValidBlock(blockChain = this) {
+    for (const block of this.chain) {
+      for (const tx of block.transaction) {
+        if (tx.from === address || tx.to === address) {
+          txs.push(tx);
+        }
+      }
+    }
+
+    console.log("get transactions for wallet count: %s", txs.length);
+    return txs;
+  }
+
+  isValidBlockChain(blockChain = this) {
     for (let i = 1; i < blockChain.chain.length; i++) {
-      const currBlock = blockChain.chain[i];
-      const prevBlock = blockChain.chain[i - 1];
-      if (
-        currBlock.hash !== currBlock.getHash() ||
-        prevBlock.hash !== prevBlock.getHash() ||
-        currBlock.isValidTransactions(blockChain)
-      ) {
+      const currentBlock = this.chain[i];
+      const previousBlock = this.chain[i - 1];
+
+      if (previousBlock.hash !== currentBlock.previousHash) {
+        return false;
+      }
+
+      if (!currentBlock.isValidTransactions()) {
+        return false;
+      }
+
+      if (currentBlock.hash !== currentBlock.getHash()) {
         return false;
       }
     }
@@ -154,27 +260,7 @@ export class BlockChain {
   }
 }
 
-export class Wallet {
-  public privateKey: string;
-  public publicKey: string;
-  // initializing our chain with no records
-  constructor() {
-    const key = ec.genKeyPair();
-    this.privateKey = key.getPrivate("hex");
-    this.publicKey = key.getPublic("hex");
-  }
-
-  send(amount: number, receiverPublicKey: string) {
-    const transaction = new Transaction(
-      amount,
-      this.publicKey,
-      receiverPublicKey
-    );
-    const shaSign = crypto.createSign("SHA256");
-    // add the transaction json
-    shaSign.update(transaction.toString()).end();
-    // sign the SHA with the private key
-    const signature = shaSign.sign(this.privateKey);
-    Chain.instance.insertBlock(transaction, this.publicKey, signature);
-  }
-}
+export const getPublicKey = (privateKey: string) => {
+  const key = ec.keyFromPrivate(privateKey);
+  return key.getPublic("hex");
+};
