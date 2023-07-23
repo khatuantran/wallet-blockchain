@@ -46,6 +46,7 @@ export const SendCoin = () => {
 
     if (res?.status === 200) {
       toast.success("Send coin successfully");
+      setBtn(false);
       return;
     }
   };
