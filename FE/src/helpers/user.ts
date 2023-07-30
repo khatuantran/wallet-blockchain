@@ -6,7 +6,7 @@ let store = (set, get) => ({
 
   getUser: () => get().user,
   setDataUser: (data) => {
-    console.log("data", data)
+    console.log("data", data);
     set((state) => ({
       ...state,
       user: data,
@@ -30,4 +30,4 @@ let store = (set, get) => ({
 store = devtools(store) as any; // Allow redux devtool debug
 store = persist(store, { name: "user" }) as any; // Persist to local storage
 
-export default create(store);
+export const userStore = create(store);

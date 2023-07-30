@@ -5,17 +5,18 @@ import path from "path";
 import { configSequelize, configAssociation } from "./utils";
 import {
   createWallet,
+  getAllBlock,
+  getAllPendingTransaction,
   getAllTransaction,
+  getBlockTransaction,
   getWallet,
   getWalletBalance,
+  mine,
   sendCoin,
 } from "./controllers";
 import { Chain, Wallet } from "./models";
-import elliptic from "elliptic";
 import { BlockChain } from "./class";
 import "dotenv/config";
-const EC = elliptic.ec;
-const ec = new EC("secp256k1");
 
 const app: Express = express();
 
@@ -29,7 +30,11 @@ app.post("/login-wallet", getWallet);
 app.post("/create-wallet", createWallet);
 app.get("/wallet-balance", getWalletBalance);
 app.post("/send-coin", sendCoin);
-app.get("/transaction", getAllTransaction);
+app.get("/history", getAllTransaction);
+app.get("/block", getAllBlock);
+app.get("/transaction", getAllPendingTransaction);
+app.post("/mine", mine);
+app.get("/block-transaction", getBlockTransaction);
 
 app.use((req, res) => {
   return res.status(404).json({

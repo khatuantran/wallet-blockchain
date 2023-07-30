@@ -5,7 +5,6 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 const defaultTheme = createTheme();
 
-
 function App() {
   return (
     <ThemeProvider theme={defaultTheme}>
@@ -14,7 +13,7 @@ function App() {
       </div>
       <ToastContainer
         position="top-right"
-        autoClose={5000}
+        autoClose={1000}
         hideProgressBar={false}
         newestOnTop={false}
         closeOnClick

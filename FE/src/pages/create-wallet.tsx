@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { Box, Button, Grid, TextField, Typography, Avatar, CssBaseline, Container, Link } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { useNavigate } from "react-router-dom";
-import userStore from "../stores/user";
+import { userStore } from "../helpers";
 import axios from "axios";
 
 // TODO remove, this demo shouldn't need to reset the theme.
@@ -16,38 +16,43 @@ export const CreateWallet = () => {
   const [buttonDisabled, setBtn] = React.useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLElement>) => {
-    event.preventDefault();
-    setBtn(true);
-    const res = await toast.promise(
-      axios.post(
-        process.env.REACT_APP_API_URL + "/create-wallet",
+    try {
+      event.preventDefault();
+      setBtn(true);
+      const res = await toast.promise(
+        axios.post(
+          process.env.REACT_APP_API_URL + "/create-wallet",
+          {
+            userName,
+            password,
+          },
+          { validateStatus: () => true },
+        ),
         {
-          userName,
-          password,
+          pending: "Create wallet...",
         },
-        { validateStatus: () => true },
-      ),
-      {
-        pending: "Create wallet...",
-      },
-    );
+      );
 
-    if (!res) {
-      toast.error("Failed to fetch");
+      if (!res) {
+        toast.error("Failed to fetch");
+        setBtn(false);
+        return;
+      }
+
+      if (res?.status !== 200) {
+        toast.error(res.data.error);
+        setBtn(false);
+        return;
+      }
+
+      if (res?.status === 200) {
+        setDataUser(res?.data);
+        toast.success("Create Wallet Successfully");
+        navigate("/home");
+      }
+    } catch (error) {
       setBtn(false);
-      return;
-    }
-
-    if (res?.status !== 200) {
-      toast.error(res.data.error);
-      setBtn(false);
-      return;
-    }
-
-    if (res?.status === 200) {
-      setDataUser(res?.data);
-      toast.success("Create Wallet Successfully");
-      navigate("/home");
+      return toast.error(error.message);
     }
   };
 

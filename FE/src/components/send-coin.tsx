@@ -6,7 +6,7 @@ import Button from "@mui/material/Button";
 import { FormControl, Input, InputAdornment, InputLabel, TextField } from "@mui/material";
 import ContactsIcon from "@mui/icons-material/Contacts";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
-import userStore from "../stores/user";
+import { userStore } from "../helpers";
 
 export const SendCoin = () => {
   const [valueAddress, setAddress] = useState(null);
@@ -17,37 +17,42 @@ export const SendCoin = () => {
     event.preventDefault();
     setBtn(true);
 
-    const res = await toast.promise(
-      axios.post(
-        process.env.REACT_APP_API_URL + "/send-coin",
+    try {
+      const res = await toast.promise(
+        axios.post(
+          process.env.REACT_APP_API_URL + "/send-coin",
+          {
+            fromUser: getUser().userName,
+            toUser: valueAddress,
+            amount: valueCoin,
+          },
+          { validateStatus: () => true },
+        ),
         {
-          fromUser: getUser().userName,
-          toUser: valueAddress,
-          amount: valueCoin,
+          pending: "Sending...",
         },
-        { validateStatus: () => true },
-      ),
-      {
-        pending: "Sending...",
-      },
-    );
+      );
 
-    if (!res) {
-      toast.error("Failed to fetch");
-      setBtn(false);
-      return;
-    }
+      if (!res) {
+        toast.error("Failed to fetch");
+        setBtn(false);
+        return;
+      }
 
-    if (res?.status === 400) {
-      toast.error(res.data.error);
-      setBtn(false);
-      return;
-    }
+      if (res?.status === 400) {
+        toast.error(res.data.error);
+        setBtn(false);
+        return;
+      }
 
-    if (res?.status === 200) {
-      toast.success("Send coin successfully");
+      if (res?.status === 200) {
+        toast.success("Send coin successfully");
+        setBtn(false);
+        return;
+      }
+    } catch (error) {
       setBtn(false);
-      return;
+      return toast.error(error.message);
     }
   };
 
@@ -64,7 +69,7 @@ export const SendCoin = () => {
               <ContactsIcon />
             </InputAdornment>
           }
-          onChange={(e) => setAddress(e.target.value)}
+          onChange={(e) => setAddress(e?.target?.value)}
         />
       </FormControl>
       <TextField
@@ -81,7 +86,7 @@ export const SendCoin = () => {
           ),
         }}
         variant="standard"
-        onChange={(e) => setCoin(e.target.value)}
+        onChange={(e) => setCoin(e?.target?.value)}
       />
       <Button variant="contained" disabled={isDisabled} onClick={handleOnClick}>
         Send

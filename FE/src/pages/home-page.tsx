@@ -5,21 +5,26 @@ import {
   CssBaseline,
   Divider,
   Drawer,
+  IconButton,
   List,
   ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   Toolbar,
+  Typography,
 } from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import HistoryIcon from "@mui/icons-material/History";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { PageType } from "./const";
-import { History, SendCoin, UserProfile } from "../components";
+import { Block, PendingTransaction, SendCoin, UserProfile, History, BlockTransaction } from "../components";
 import { useNavigate } from "react-router-dom";
-import userStore from "../stores/user";
+import CurrencyBitcoinIcon from "@mui/icons-material/CurrencyBitcoin";
+import ViewAgendaIcon from "@mui/icons-material/ViewAgenda";
+import DownloadingIcon from "@mui/icons-material/Downloading";
+import { userStore } from "../helpers";
 const drawerWidth = 240;
 export const HomePage = (props?: Props) => {
   const navigate = useNavigate();
@@ -29,25 +34,37 @@ export const HomePage = (props?: Props) => {
     pageType: PageType.ProfilePage,
   });
 
-  const handleHomeIconClick = (event: React.MouseEvent<HTMLDivElement>) => {
+  const handleHomeIconClick = () => {
     setPage({
       pageType: PageType.ProfilePage,
     });
   };
 
-  const handleSendCoinIconClick = (event: React.MouseEvent<HTMLDivElement>) => {
+  const handleSendCoinIconClick = () => {
     setPage({
       pageType: PageType.SendCoinPage,
     });
   };
 
-  const handleHistoryIconClick = (event: React.MouseEvent<HTMLDivElement>) => {
+  const handleBlockIconClick = () => {
+    setPage({
+      pageType: PageType.BlockPage,
+    });
+  };
+
+  const handleHistoryIconClick = () => {
     setPage({
       pageType: PageType.HistoryPage,
     });
   };
 
-  const handleLogoutIconClick = (event: React.MouseEvent<HTMLDivElement>) => {
+  const handleTransactionIconClick = () => {
+    setPage({
+      pageType: PageType.TransactionPage,
+    });
+  };
+
+  const handleLogoutIconClick = () => {
     logout();
     navigate("/login-wallet");
   };
@@ -58,18 +75,29 @@ export const HomePage = (props?: Props) => {
         return <UserProfile sendCoinClick={handleSendCoinIconClick} />;
       case PageType.SendCoinPage:
         return <SendCoin />;
+      case PageType.BlockPage:
+        return <Block />;
       case PageType.HistoryPage:
         return <History />;
+      case PageType.TransactionPage:
+        return <PendingTransaction />;
       default:
         break;
     }
   };
 
   const drawer = (
-    <div>
-      <Toolbar />
+    <Box>
+      <Toolbar>
+        <IconButton>
+          <CurrencyBitcoinIcon />
+        </IconButton>
+        <Typography variant="h5" align="center">
+          MyCoin
+        </Typography>
+      </Toolbar>
       <Divider />
-      <List>
+      <List disablePadding>
         <ListItem key="my_account" disablePadding>
           <ListItemButton onClick={handleHomeIconClick}>
             <ListItemIcon>
@@ -78,6 +106,7 @@ export const HomePage = (props?: Props) => {
             <ListItemText primary="My Account" />
           </ListItemButton>
         </ListItem>
+        <Divider />
         <ListItem key="send_coin" disablePadding>
           <ListItemButton onClick={handleSendCoinIconClick}>
             <ListItemIcon>
@@ -86,14 +115,34 @@ export const HomePage = (props?: Props) => {
             <ListItemText primary="Send Coin" />
           </ListItemButton>
         </ListItem>
-        <ListItem key="my_history" disablePadding>
+        <Divider />
+        <ListItem key="blocks" disablePadding>
+          <ListItemButton onClick={handleBlockIconClick}>
+            <ListItemIcon>
+              <ViewAgendaIcon />
+            </ListItemIcon>
+            <ListItemText primary="Blocks" />
+          </ListItemButton>
+        </ListItem>
+        <Divider />
+        <ListItem key="pending_transaction" disablePadding>
+          <ListItemButton onClick={handleTransactionIconClick}>
+            <ListItemIcon>
+              <DownloadingIcon />
+            </ListItemIcon>
+            <ListItemText primary="Pending Transaction" />
+          </ListItemButton>
+        </ListItem>
+        <Divider />
+        <ListItem key="history" disablePadding>
           <ListItemButton onClick={handleHistoryIconClick}>
             <ListItemIcon>
               <HistoryIcon />
             </ListItemIcon>
-            <ListItemText primary="My Acoount" />
+            <ListItemText primary="My history" />
           </ListItemButton>
         </ListItem>
+        <Divider />
         <ListItem key="logout" disablePadding>
           <ListItemButton onClick={handleLogoutIconClick}>
             <ListItemIcon>
@@ -103,13 +152,18 @@ export const HomePage = (props?: Props) => {
           </ListItemButton>
         </ListItem>
       </List>
-    </div>
+    </Box>
   );
 
   return (
     <Box sx={{ display: "flex" }}>
       <CssBaseline />
-      <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }} aria-label="mailbox folders">
+      <Box
+        component="nav"
+        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        aria-label="mailbox folders"
+        bgcolor="#184f90"
+      >
         {/* The implementation can be swapped with js to avoid SEO duplication of links. */}
         <Drawer
           variant="temporary"

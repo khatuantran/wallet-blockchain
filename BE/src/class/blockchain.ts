@@ -204,7 +204,6 @@ export class BlockChain {
     }
 
     this.pendingTransactions.push(transaction);
-    console.log("transaction added: %s", transaction);
   }
 
   getBalance(address: string) {
@@ -257,6 +256,10 @@ export class BlockChain {
       }
     }
     return true;
+  }
+
+  getAllPendingTransaction() {
+    return this.pendingTransactions;
   }
 }
 

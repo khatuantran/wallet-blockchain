@@ -3,7 +3,8 @@ import express from "express";
 import { Chain, Wallet } from "../models";
 import elliptic from "elliptic";
 import { getChain } from "../utils";
-import { BlockChain, Transaction, getPublicKey } from "../class";
+import { Transaction, getPublicKey } from "../class";
+import { StatusCodes } from "http-status-codes";
 
 const EC = elliptic.ec;
 const ec = new EC("secp256k1");
@@ -37,19 +38,14 @@ export const getWallet = async (
       publicKey: key.getPublic("hex"),
     });
   } catch (err) {
-    return res.status(400).json({
-      status: 400,
-      error: {
-        code: "bad_request",
-        message: err.message,
-      },
-    });
+    next(err);
   }
 };
 
 export const createWallet = async (
   req: express.Request,
-  res: express.Response
+  res: express.Response,
+  next: express.NextFunction
 ) => {
   try {
     const key = ec.genKeyPair();
@@ -64,19 +60,14 @@ export const createWallet = async (
       privateKey,
     });
   } catch (err) {
-    return res.status(400).json({
-      status: 400,
-      error: {
-        code: "bad_request",
-        message: err,
-      },
-    });
+    next(err);
   }
 };
 
 export const getAllTransaction = async (
   req: express.Request,
-  res: express.Response
+  res: express.Response,
+  next: express.NextFunction
 ) => {
   try {
     const blockChain = await getChain();
@@ -103,13 +94,7 @@ export const getAllTransaction = async (
       }),
     });
   } catch (err) {
-    return res.status(400).json({
-      status: 400,
-      error: {
-        code: "bad_request",
-        message: err,
-      },
-    });
+    next(err);
   }
 };
 
@@ -142,14 +127,7 @@ export const getWalletBalance = async (
       block: blockChain.chain.length,
     });
   } catch (err) {
-    console.log(err);
-    return res.status(400).json({
-      status: 400,
-      error: {
-        code: "bad_request",
-        message: err,
-      },
-    });
+    next(err);
   }
 };
 
@@ -173,11 +151,9 @@ export const sendCoin = async (
     if (amount <= 0) {
       return next(new Error("invalid coin"));
     }
-    
+
     const wallet = await Wallet.findOne({ where: { userName: fromUser } });
     const desUser = await Wallet.findOne({ where: { userName: toUser } });
-
-    console.log(wallet);
 
     if (!wallet || !desUser) {
       return next(new Error("Wallet not found"));
@@ -192,7 +168,7 @@ export const sendCoin = async (
     const key = ec.keyFromPrivate(wallet.privateKey);
     tx.sign(key);
     blockChain.addTransaction(tx);
-    blockChain.minePendingTransaction("");
+    // blockChain.minePendingTransaction("");
 
     await Chain.update(
       {
@@ -203,13 +179,147 @@ export const sendCoin = async (
 
     return res.status(200).json({ message: "Success" });
   } catch (err) {
-    console.log(err);
-    return res.status(400).json({
-      status: 400,
-      error: {
-        code: "bad_request",
-        message: err.message,
-      },
+    next(err);
+  }
+};
+
+export const getAllPendingTransaction = async (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) => {
+  try {
+    const [blockChain, wallets] = await Promise.all([
+      getChain(),
+      Wallet.findAll(),
+    ]);
+
+    const walletRecord = wallets.reduce((p, c) => {
+      const publicKey = getPublicKey(c.privateKey);
+      c["publicKey"] = publicKey;
+      p[publicKey] = c;
+      return p;
+    }, {});
+
+    return res.status(200).json({
+      transaction: blockChain.getAllPendingTransaction().map((t) => ({
+        from: t.from,
+        to: t.to,
+        amount: t.amount,
+        date: t.timestamp,
+        fromUser: walletRecord[t.from]?.userName,
+        toUser: walletRecord[t.to]?.userName,
+      })),
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const mine = async (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) => {
+  try {
+    if (!req.body.userName) {
+      return next(new Error("User name invalid"));
+    }
+
+    const user = await Wallet.findOne({
+      where: { userName: req.body.userName },
+    });
+
+    if (!user) {
+      return next(new Error("User not found"));
+    }
+
+    const blockChain = await getChain();
+
+    if (blockChain.pendingTransactions.length === 0) {
+      return next(new Error("Current chain have not any pending transaction"));
+    }
+
+    blockChain.minePendingTransaction(getPublicKey(user.privateKey));
+
+    await Chain.update(
+      {
+        blockchain: blockChain,
+      },
+      { where: {} }
+    );
+
+    return res.status(200).json({
+      transaction: [],
+      message: "success",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getAllBlock = async (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) => {
+  try {
+    const blockChain = await getChain();
+
+    return res.status(200).json({
+      block: blockChain.chain.map((b, index) => ({
+        index,
+        hash: b.hash,
+        previousHash: b.previousHash,
+        nonce: b.nonce,
+        date: b.timestamp,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getBlockTransaction = async (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) => {
+  try {
+    if (!req.query.index) {
+      return next(new Error("Index invalid"));
+    }
+
+    const [blockChain, wallets] = await Promise.all([
+      getChain(),
+      Wallet.findAll(),
+    ]);
+
+    if (blockChain.chain.length >= Number(req.query.index)) {
+      return next(new Error(`Index must be <= ${blockChain.chain.length - 1}`));
+    }
+
+    const walletRecord = wallets.reduce((p, c) => {
+      const publicKey = getPublicKey(c.privateKey);
+      c["publicKey"] = publicKey;
+      p[publicKey] = c;
+      return p;
+    }, {});
+
+    console.log(blockChain.chain[Number(req.query.index)].transaction);
+    return res.status(200).json({
+      transaction: blockChain.chain[Number(req.query.index)].transaction.map(
+        (t) => ({
+          from: t.from,
+          to: t.to,
+          amount: t.amount,
+          date: t.timestamp,
+          fromUser: walletRecord[t.from]?.userName,
+          toUser: walletRecord[t.to]?.userName,
+        })
+      ),
+    });
+  } catch (err) {
+    next(err);
   }
 };

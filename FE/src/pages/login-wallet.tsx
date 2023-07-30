@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { Box, Button, Grid, TextField, Typography, Avatar, CssBaseline, Container, Link } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { useNavigate } from "react-router-dom";
-import userStore from "../stores/user";
+import { userStore } from "../helpers";
 import axios from "axios";
 
 export const LoginWallet = () => {
@@ -14,40 +14,45 @@ export const LoginWallet = () => {
   const [buttonDisabled, setBtn] = React.useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLElement>) => {
-    event.preventDefault();
-    setBtn(true);
-    const res = await toast.promise(
-      axios.post(
-        process.env.REACT_APP_API_URL + "/login-wallet",
+    try {
+      event.preventDefault();
+      setBtn(true);
+      const res = await toast.promise(
+        axios.post(
+          process.env.REACT_APP_API_URL + "/login-wallet",
+          {
+            userName,
+            password,
+          },
+          { validateStatus: () => true },
+        ),
         {
-          userName,
-          password,
+          pending: "Log in...",
         },
-        { validateStatus: () => true },
-      ),
-      {
-        pending: "Log in...",
-      },
-    );
+      );
 
-    if (!res) {
-      toast.error("Failed to fetch");
+      if (!res) {
+        toast.error("Failed to fetch");
+        setBtn(false);
+        return;
+      }
+
+      if (res?.status !== 200) {
+        toast.error(res.data.error);
+        setBtn(false);
+        return;
+      }
+
+      if (res?.status === 200) {
+        setDataUser(res?.data);
+        navigate("/home");
+      }
+    } catch (error) {
       setBtn(false);
-      return;
-    }
-
-    if (res?.status !== 200) {
-      toast.error(res.data.error);
-      setBtn(false);
-      return;
-    }
-
-    if (res?.status === 200) {
-      setDataUser(res?.data);
-      toast.success("Đăng nhập thành công");
-      navigate("/home");
+      return toast.error(error.message);
     }
   };
+
   return (
     <Container component="main" maxWidth="xs">
       <CssBaseline />
