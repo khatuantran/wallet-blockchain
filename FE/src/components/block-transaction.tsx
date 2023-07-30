@@ -45,7 +45,7 @@ interface IPendingTransaction {
 export interface SimpleDialogProps {
   open: boolean;
   selectedValue: number;
-  onClose: (value: boolean) => void;
+  onClose: () => void;
 }
 
 export const BlockTransaction = (props: SimpleDialogProps) => {
@@ -53,11 +53,6 @@ export const BlockTransaction = (props: SimpleDialogProps) => {
 
   const getBlock = async () => {
     try {
-      if (!props?.selectedValue) {
-        return;
-      }
-
-      console.log(props.selectedValue);
       const fetch = axios.get(`${process.env.REACT_APP_API_URL}/block-transaction?index=${props.selectedValue}`, {
         validateStatus: () => true,
       });
@@ -81,15 +76,11 @@ export const BlockTransaction = (props: SimpleDialogProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleClose = () => {
-    props.onClose(true);
-  };
-
   return (
-    <Dialog onClose={handleClose} open={props.open}>
+    <Dialog onClose={() => props.onClose()} open={props.open}>
       <DialogTitle>Transaction in block {props.selectedValue}</DialogTitle>
       <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 700 }} aria-label="customized table">
+        <Table sx={{ minWidth: 1000 }} aria-label="customized table">
           <TableHead>
             <TableRow>
               <StyledTableCell align="center">Index</StyledTableCell>
@@ -103,7 +94,9 @@ export const BlockTransaction = (props: SimpleDialogProps) => {
             {list.map((t, index) => (
               <StyledTableRow key={index}>
                 <StyledTableCell align="center">{index + 1}</StyledTableCell>
-                <StyledTableCell align="center">{t.fromUser}</StyledTableCell>
+                <StyledTableCell align="center">
+                  {t.fromUser === undefined ? "REWARD SYSTEM" : t.fromUser}
+                </StyledTableCell>
                 <StyledTableCell align="center">{t.toUser}</StyledTableCell>
                 <StyledTableCell align="center">{convertVND(t.amount)}</StyledTableCell>
                 <StyledTableCell align="center">{convertTimeVN(t.date)}</StyledTableCell>

@@ -55,7 +55,7 @@ export const Block = () => {
     setOpen(true);
   };
 
-  const handleClose = (value: number) => {
+  const handleClose = () => {
     console.log("aa");
     setOpen(false);
     setSelectedValue(null);
@@ -109,7 +109,7 @@ export const Block = () => {
           </Card>
         </Grid>
       ))}
-      <BlockTransaction selectedValue={selectedValue} open={open} onClose={handleClose} />
+      {open ? <BlockTransaction selectedValue={selectedValue} open={open} onClose={handleClose} /> : null}
     </Grid>
   );
 };

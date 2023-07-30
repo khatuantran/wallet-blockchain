@@ -9,8 +9,8 @@ import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import { userStore } from "../helpers";
 
 export const SendCoin = () => {
-  const [valueAddress, setAddress] = useState(null);
-  const [valueCoin, setCoin] = useState(null);
+  const [valueAddress, setAddress] = useState("");
+  const [valueCoin, setCoin] = useState("");
   const [isDisabled, setBtn] = useState(false);
   const { getUser } = userStore();
   const handleOnClick = async (event: React.FormEvent<HTMLElement>) => {

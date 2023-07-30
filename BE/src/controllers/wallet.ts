@@ -295,7 +295,7 @@ export const getBlockTransaction = async (
       Wallet.findAll(),
     ]);
 
-    if (blockChain.chain.length >= Number(req.query.index)) {
+    if (Number(req.query.index) >= blockChain.chain.length) {
       return next(new Error(`Index must be <= ${blockChain.chain.length - 1}`));
     }
 
@@ -306,7 +306,6 @@ export const getBlockTransaction = async (
       return p;
     }, {});
 
-    console.log(blockChain.chain[Number(req.query.index)].transaction);
     return res.status(200).json({
       transaction: blockChain.chain[Number(req.query.index)].transaction.map(
         (t) => ({
